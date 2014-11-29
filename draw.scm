@@ -1,3 +1,12 @@
+(define cx (/ doodle-width 2))
+(define cy (/ doodle-height 2))
+(define d (sqrt
+            (+ (expt doodle-width 2)
+               (expt doodle-height 2))))
+
+
+; Game
+
 (define (level-background rp)
   (let* ((rn (- rp))
          (sp (/ rp 2))
@@ -38,32 +47,46 @@
     (cairo-line-to *c* sp tp)
     (cairo-line-to *c* sn tp)
     (cairo-line-to *c* rn 0)
-    (cairo-set-source-rgb *c* 0 0 0.2)
     (cairo-fill-preserve *c*)
     (cairo-set-source-rgb *c* 0 0 1)
     (cairo-stroke *c*)))
 
 (define (draw-level)
-  (cairo-save *c*)
-  (let ((bw (/ doodle-width 2))
-        (bh (/ doodle-height 2)))
-    (cairo-set-line-width *c* 3)
-    (cairo-translate *c* bw bh)
-    (cairo-scale *c* 1 0.7)
-    (cairo-rotate *c* (channel-value hex-angle))
-    (level-background 50))
-  (cairo-restore *c*))
+  (cairo-set-line-width *c* 3)
+  (level-background 50))
 
-(define (draw-time)
+(define (draw-player)
+  (cairo-set-source-rgb *c* 0.6 0.6 1)
+  (cairo-rotate *c* (channel-value player-position))
+  (cairo-translate *c* 0 -60)
+  (cairo-move-to *c* -5 0)
+  (cairo-line-to *c* 5 0)
+  (cairo-line-to *c* 0 -10)
+  (cairo-close-path *c*)
+  (cairo-fill *c*))
+
+
+; Overlay
+
+(define (draw-overlay)
+  ; fps
+  (text 10 10 (sprintf "~A fps" (channel-value fps)))
+  ; time elapsed
   (text 10 30
-        (sprintf "~A" (/ (channel-value time) 1000))))
-
-(define (draw-fps)
-  (text 10 10 (sprintf "~A fps" (channel-value fps))))
+        (sprintf "~A" (/ (channel-value time) 1000)))
+  ; player angle
+  (text 10 50
+        (sprintf "~A°" (channel-value player-position))))
 
 (define (draw-all)
+  ; game board
+  (cairo-save *c*)
+  (cairo-translate *c* cx cy)
+  (cairo-scale *c* 1 0.7)
+  (cairo-rotate *c* (channel-value hex-angle))
   (draw-level)
+  (draw-player)
+  (cairo-restore *c*)
 
   ; overlay
-  (draw-fps)
-  (draw-time))
+  (draw-overlay))

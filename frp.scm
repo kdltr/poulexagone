@@ -17,26 +17,27 @@
   (for-each (lambda (s) (s value)) (channel-subscribers channel))
   (channel-value-set! channel value))
 
-(define (subscribe channel proc)
+(define (on-channel-receive channel proc)
   (channel-subscribers-set! channel (cons proc (channel-subscribers channel))))
 
-(define (unsubscribe channel proc)
-  (channel-subscribers-set! channel
-    (delete (channel-subscribers channel) proc)))
-
-(define (siphon-channel source-channel #!optional (destination-channel (make-channel))
-                                                  (on-receive channel-enqueue))
-  (subscribe source-channel (lambda (msg) (on-receive destination-channel msg)))
+(define (siphon-channel source-channel
+                        #!optional
+                        (destination-channel (make-channel))
+                        (on-receive channel-enqueue))
+  (on-channel-receive source-channel
+    (lambda (msg) (on-receive destination-channel msg)))
   destination-channel)
 
 (define (fold-channel channel proc seed)
-  (siphon-channel channel
-                  (make-channel)
-                  (let ((previous seed))
-                    (lambda (dest msg)
-                      (let ((result (proc msg previous)))
-                        (set! previous result)
-                        (channel-enqueue dest result))))))
+  (let ((result (make-channel)))
+    (channel-enqueue result seed)
+    (on-channel-receive channel
+      (let ((previous seed))
+        (lambda (msg)
+          (let ((value (proc msg previous)))
+            (set! previous value)
+            (channel-enqueue result value)))))
+    result))
 
 (define (map-channel channel proc)
   (siphon-channel channel
@@ -50,4 +51,18 @@
                   (lambda (dest msg)
                     (if (pred? msg) (channel-enqueue dest msg)))))
 
-(define on-channel-receive subscribe)
+(define (combine proc chan1 chan2)
+  (let ((comb (make-channel)))
+    (let ((val1 (void))
+          (val2 (void)))
+      (on-channel-receive chan1
+        (lambda (m)
+          (set! val1 m)
+          (unless (eqv? val2 (void))
+            (channel-enqueue comb (proc val1 val2)))))
+      (on-channel-receive chan2
+        (lambda (m)
+          (set! val2 m)
+          (unless (eqv? val1 (void))
+            (channel-enqueue comb (proc val1 val2))))))
+    comb))

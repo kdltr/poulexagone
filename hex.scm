@@ -17,7 +17,6 @@
 
 (define pi cairo-pi)
 (define *c* (doodle-context))
-(define d (sqrt (+ (expt doodle-width 2) (expt doodle-height 2))))
 
 (include "logic")
 (include "draw")
@@ -31,7 +30,6 @@
     ; drawing callbacks
     ; (clear-screen)
     (cairo-new-path *c*)
-    (draw-all)
-    (cairo-close-path *c*)))
+    (draw-all)))
 
 (run-event-loop)
