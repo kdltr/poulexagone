@@ -24,7 +24,7 @@
 (world-changes
   (lambda (evlist dt exit)
     ; logic run time
-    (channel-enqueue clock (if (zero? dt) 1 dt))
+    (channel-enqueue clock dt)
     (for-each (cut channel-enqueue events <>) evlist)
 
     ; drawing callbacks

@@ -11,11 +11,13 @@
 
 (define fps
   (map-channel clock
-    (lambda (c) (* (/ 1 c) 1000))))
+    (lambda (c) (if (zero? c)
+                  0
+                  (* (/ 1 c) 1000)))))
 
 (define hex-angle
   (map-channel time
-    (lambda (t) (/ t (* pi 200)))))
+    (lambda (t) (/ t (* pi 300)))))
 
 (define key-events
   (filter-channel events
@@ -55,3 +57,12 @@
         (+ pos delta)
         pos))
     0))
+
+(define player-zone
+  (map-channel
+    player-position
+    (lambda (pos)
+      (modulo
+        (inexact->exact
+          (ceiling (/ (- pos (/ pi 6)) (/ pi 3))))
+        6))))
