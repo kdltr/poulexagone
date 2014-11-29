@@ -66,3 +66,15 @@
         (inexact->exact
           (ceiling (/ (- pos (/ pi 6)) (/ pi 3))))
         6))))
+(channel-enqueue player-zone 0)
+
+(define wall-position
+  (map-channel
+    (fold-channel
+      clock
+      (lambda (dt pos)
+        (+ (/ dt 4)
+           pos))
+      0)
+    (lambda (p)
+       (modulo (round (- p)) 600))))

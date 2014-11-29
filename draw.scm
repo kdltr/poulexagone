@@ -1,8 +1,8 @@
 (define cx (/ doodle-width 2))
 (define cy (/ doodle-height 2))
 (define d (sqrt
-               (+ (expt doodle-width 2)
-                  (expt doodle-height 2))))
+            (+ (expt doodle-width 2)
+               (expt doodle-height 2))))
 
 (define (vnorm x y)
   (let ((length (sqrt (+ (expt x 2) (expt y 2)))))
@@ -13,6 +13,9 @@
 
 (define line-to
   (cut apply cairo-line-to *c* <>))
+
+(define move-to
+  (cut apply cairo-move-to *c* <>))
 
 ; Game
 
@@ -45,19 +48,19 @@
   (apply cairo-set-source-rgb *c* color)
   (cairo-fill *c*))
 
-(define (draw-hexagon color)
+(define (draw-hexagon fill stroke)
   (apply cairo-move-to *c* (car hexagon-coordinates))
   (for-each line-to (cdr hexagon-coordinates))
   (cairo-close-path *c*)
+  (apply cairo-set-source-rgb *c* fill)
   (cairo-fill-preserve *c*)
-  (apply cairo-set-source-rgb *c* color)
+  (apply cairo-set-source-rgb *c* stroke)
   (cairo-set-line-width *c* 3)
   (cairo-stroke *c*))
 
 (define (draw-level)
   (draw-background bg1-coordinates '(0.4 0.4 0.6))
-  (draw-background bg2-coordinates '(0.1 0.1 0.3))
-  (draw-hexagon '(0 0 1)))
+  (draw-background bg2-coordinates '(0.1 0.1 0.3)))
 
 (define (draw-player)
   (cairo-set-source-rgb *c* 0.6 0.6 1)
@@ -68,6 +71,16 @@
   (cairo-line-to *c* 0 -10)
   (cairo-close-path *c*)
   (cairo-fill *c*))
+
+(define (draw-wall zone position width)
+  (let ((units (take normal-coordinates 2)))
+    (move-to (vmul position (car units)))
+    (line-to (vmul (+ position width) (car units)))
+    (line-to (vmul (+ position width) (cadr units)))
+    (line-to (vmul position (cadr units)))
+    (cairo-close-path *c*)
+    (cairo-set-source-rgb *c* 1 1 0)
+    (cairo-fill *c*)))
 
 
 ; Overlay
@@ -91,6 +104,8 @@
   (cairo-scale *c* 1 0.8)
   (cairo-rotate *c* (channel-value hex-angle))
   (draw-level)
+  (draw-wall 5 (channel-value wall-position) 30)
+  (draw-hexagon '(0.1 0.1 0.3) '(0 0 1))
   (draw-player)
   (cairo-restore *c*)
 
