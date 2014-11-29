@@ -1,9 +1,8 @@
 (define cx (/ doodle-width 2))
 (define cy (/ doodle-height 2))
-(define d (/ (sqrt
+(define d (sqrt
                (+ (expt doodle-width 2)
-                  (expt doodle-height 2)))
-             2))
+                  (expt doodle-height 2))))
 
 (define (vnorm x y)
   (let ((length (sqrt (+ (expt x 2) (expt y 2)))))
@@ -30,7 +29,7 @@
 (define hexagon-coordinates
   (map (cut vmul 50 <>) normal-coordinates))
 
-(define (apply-with-scale p) (vmul d (p hexagon-coordinates)))
+(define (apply-with-scale p) (vmul d (p normal-coordinates)))
 (define (zero v) '(0 0))
 
 (define bg1-coordinates
