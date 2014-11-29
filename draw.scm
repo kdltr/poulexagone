@@ -1,59 +1,92 @@
 (define cx (/ doodle-width 2))
 (define cy (/ doodle-height 2))
-(define d (sqrt
-            (+ (expt doodle-width 2)
-               (expt doodle-height 2))))
+(define d (/ (sqrt
+               (+ (expt doodle-width 2)
+                  (expt doodle-height 2)))
+             2))
+
+(define (vnorm x y)
+  (let ((length (sqrt (+ (expt x 2) (expt y 2)))))
+    (list (/ x length) (/ y length))))
+
+(define (vmul k v)
+  (map (cut * k <>) v))
 
 
 ; Game
 
-(define (level-background rp)
-  (let* ((rn (- rp))
+(define normal-coordinates
+  (let* ((rp 1)
+         (rn (- rp))
          (sp (/ rp 2))
          (sn (- sp))
          (tp (* rp (sin (/ pi 3))))
          (tn (- tp)))
+    (list (vnorm rn 0)
+          (vnorm sn tn)
+          (vnorm sp tn)
+          (vnorm rp 0)
+          (vnorm sp tp)
+          (vnorm sn tp))))
+
+(define hexagon-coordinates
+  (map (cut vmul 50 <>) normal-coordinates))
+
+(define zero '(0 0))
+
+(define bgdark
+  (list zero
+        (first hexagon-coordinates))
+  )
+
+(define (draw-level)
+  (let* ((rp 50)
+         (rn (- rp))
+         (sp (/ rp 2))
+         (sn (- sp))
+         (tp (* rp (sin (/ pi 3))))
+         (tn (- tp))
+         (coords hexagon-coordinates)
+         (bgcoords (list (first coords) ))
+         )
 
     ; background
-    (cairo-set-source-rgb *c* 0.4 0.4 0.6)
     (cairo-move-to *c* 0 0)
-    (cairo-line-to *c* (* d rn) (* d 0))
-    (cairo-line-to *c* (* d sn) (* d tn))
+    (apply cairo-line-to *c* (vmul d (first coords)))
+    (apply cairo-line-to *c* (vmul d (second coords)))
     (cairo-line-to *c* 0 0)
-    (cairo-line-to *c* (* d rp) (* d 0))
-    (cairo-line-to *c* (* d sp) (* d tn))
+    (cairo-line-to *c* (* d sp) (* d tn)) ; third
+    (cairo-line-to *c* (* d rp) (* d 0))  ; forth
     (cairo-line-to *c* 0 0)
-    (cairo-line-to *c* (* d sp) (* d tp))
-    (cairo-line-to *c* (* d sn) (* d tp))
-    (cairo-line-to *c* 0 0)
+    (cairo-line-to *c* (* d sp) (* d tp)) ; fifth
+    (cairo-line-to *c* (* d sn) (* d tp)) ; sixth
+    (cairo-close-path *c*)
+    (cairo-set-source-rgb *c* 0.4 0.4 0.6)
     (cairo-fill *c*)
+
+    (cairo-move-to *c* 0 0)
+    (cairo-line-to *c* (* d rn) (* d 0))  ; first
+    (cairo-line-to *c* (* d sn) (* d tp)) ; sixth
+    (cairo-line-to *c* 0 0)
+    (cairo-line-to *c* (* d rp) (* d 0))  ; forth
+    (cairo-line-to *c* (* d sp) (* d tp)) ; fifth
+    (cairo-line-to *c* 0 0)
+    (cairo-line-to *c* (* d sn) (* d tn)) ; second
+    (cairo-line-to *c* (* d sp) (* d tn)) ; third
+    (cairo-close-path *c*)
     (cairo-set-source-rgb *c* 0.1 0.1 0.3)
-    (cairo-line-to *c* (* d sn) (* d tp))
-    (cairo-line-to *c* (* d rn) (* d 0))
-    (cairo-line-to *c* 0 0)
-    (cairo-line-to *c* (* d rp) (* d 0))
-    (cairo-line-to *c* (* d sp) (* d tp))
-    (cairo-line-to *c* 0 0)
-    (cairo-line-to *c* (* d sp) (* d tn))
-    (cairo-line-to *c* (* d sn) (* d tn))
-    (cairo-line-to *c* 0 0)
     (cairo-fill *c*)
 
     ; hexagon
-    (cairo-move-to *c* rn 0)
-    (cairo-line-to *c* sn tn)
-    (cairo-line-to *c* sp tn)
-    (cairo-line-to *c* rp 0)
-    (cairo-line-to *c* sp tp)
-    (cairo-line-to *c* sn tp)
-    (cairo-line-to *c* rn 0)
+    (apply cairo-move-to *c* (car coords))
+    (for-each
+      (cut apply cairo-line-to *c* <>)
+      (cdr coords))
+    (cairo-close-path *c*)
     (cairo-fill-preserve *c*)
     (cairo-set-source-rgb *c* 0 0 1)
+    (cairo-set-line-width *c* 3)
     (cairo-stroke *c*)))
-
-(define (draw-level)
-  (cairo-set-line-width *c* 3)
-  (level-background 50))
 
 (define (draw-player)
   (cairo-set-source-rgb *c* 0.6 0.6 1)
