@@ -51,7 +51,7 @@
                   (lambda (dest msg)
                     (if (pred? msg) (channel-enqueue dest msg)))))
 
-(define (combine proc chan1 chan2)
+(define (combine-channels proc chan1 chan2)
   (let ((comb (make-channel)))
     (let ((val1 (void))
           (val2 (void)))

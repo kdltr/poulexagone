@@ -51,7 +51,7 @@
 
 (define player-position
   (fold-channel
-    (combine combine-clock-movement clock movements)
+    (combine-channels combine-clock-movement clock movements)
     (lambda (delta pos)
       (if delta
         (+ pos delta)
@@ -68,13 +68,40 @@
         6))))
 (channel-enqueue player-zone 0)
 
-(define wall-position
-  (map-channel
+
+(define walls-speed 1/4)
+
+(define (make-wall zone width)
+  (fold-channel
+    clock
+    (lambda (dt wall)
+      (list (car wall)
+            (max 0 (- (cadr wall) (* dt walls-speed)))
+            (caddr wall)))
+    (list zone 600 width)
+    ))
+
+(define (make-walls)
+  (map
+    (lambda (i)
+      (make-wall (random 6) 20))
+    (iota (random 5))))
+
+(define walls-clock
+  (filter-channel
     (fold-channel
       clock
-      (lambda (dt pos)
-        (+ (/ dt 4)
-           pos))
+      (lambda (dt prev)
+        (if (> (+ dt prev) 500)
+          0
+          (+ dt prev)))
       0)
-    (lambda (p)
-       (modulo (round (- p)) 600))))
+    zero?))
+
+(define walls
+  (fold-channel
+    walls-clock
+    (lambda (dt walls)
+      (append (make-walls)
+              (remove (o zero? cadr channel-value) walls)))
+    '()))

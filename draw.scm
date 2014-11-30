@@ -17,33 +17,35 @@
 (define move-to
   (cut apply cairo-move-to *c* <>))
 
+
 ; Game
 
 (define normal-coordinates
-  (let* ((rp 1)
-         (rn (- rp))
-         (sp (/ rp 2))
-         (sn (- sp))
-         (tp (* rp (sin (/ pi 3))))
-         (tn (- tp)))
-    (list (vnorm rn 0) (vnorm sn tn) (vnorm sp tn)
-          (vnorm rp 0) (vnorm sp tp) (vnorm sn tp))))
+  (let* ((rp 1) (rn (- rp))
+         (sp (/ rp 2)) (sn (- sp))
+         (tp (* rp (sin (/ pi 3)))) (tn (- tp)))
+    (list
+      (vnorm sn tn) (vnorm sp tn) (vnorm rp 0)
+      (vnorm sp tp) (vnorm sn tp) (vnorm rn 0))))
+
+(define hexagon-radius 40)
 
 (define hexagon-coordinates
-  (map (cut vmul 50 <>) normal-coordinates))
+  (map (cut vmul hexagon-radius <>) normal-coordinates))
 
-(define (apply-with-scale p) (vmul d (p normal-coordinates)))
-(define (zero v) '(0 0))
+(define (apply-with p) (p normal-coordinates))
 
-(define bg1-coordinates
-  (map apply-with-scale (list first second zero third fourth zero fifth sixth)))
+(define zones-coordinates
+  (vector (map apply-with (list first second))
+          (map apply-with (list second third))
+          (map apply-with (list third fourth))
+          (map apply-with (list fourth fifth))
+          (map apply-with (list fifth sixth))
+          (map apply-with (list sixth first))))
 
-(define bg2-coordinates
-  (map apply-with-scale (list first sixth zero fourth fifth zero second third)))
-
-(define (draw-background coords color)
+(define (draw-zone n color)
   (cairo-move-to *c* 0 0)
-  (for-each line-to coords)
+  (for-each line-to (map (cut vmul d <>) (vector-ref zones-coordinates n)))
   (cairo-close-path *c*)
   (apply cairo-set-source-rgb *c* color)
   (cairo-fill *c*))
@@ -58,29 +60,32 @@
   (cairo-set-line-width *c* 3)
   (cairo-stroke *c*))
 
-(define (draw-level)
-  (draw-background bg1-coordinates '(0.4 0.4 0.6))
-  (draw-background bg2-coordinates '(0.1 0.1 0.3)))
 
 (define (draw-player)
   (cairo-set-source-rgb *c* 0.6 0.6 1)
   (cairo-rotate *c* (channel-value player-position))
-  (cairo-translate *c* 0 -60)
+  (cairo-translate *c* 0 (- (+ hexagon-radius 5)))
   (cairo-move-to *c* -5 0)
   (cairo-line-to *c* 5 0)
   (cairo-line-to *c* 0 -10)
   (cairo-close-path *c*)
   (cairo-fill *c*))
 
-(define (draw-wall zone position width)
-  (let ((units (take normal-coordinates 2)))
+(define (draw-wall zone position width color)
+  (let ((units (vector-ref zones-coordinates zone)))
     (move-to (vmul position (car units)))
     (line-to (vmul (+ position width) (car units)))
     (line-to (vmul (+ position width) (cadr units)))
     (line-to (vmul position (cadr units)))
     (cairo-close-path *c*)
-    (cairo-set-source-rgb *c* 1 1 0)
+    (apply cairo-set-source-rgb *c* color)
     (cairo-fill *c*)))
+
+(define (draw-background c1 c2)
+  (for-each
+    (lambda (n)
+      (draw-zone n (if (even? n) c1 c2)))
+    (iota 6)))
 
 
 ; Overlay
@@ -98,15 +103,25 @@
         (sprintf "Zone ~A" (channel-value player-zone))))
 
 (define (draw-all)
-  ; game board
   (cairo-save *c*)
+
   (cairo-translate *c* cx cy)
+  ;; fancy effects
   (cairo-scale *c* 1 0.8)
   (cairo-rotate *c* (channel-value hex-angle))
-  (draw-level)
-  (draw-wall 5 (channel-value wall-position) 30)
+
+  (draw-background '(0.4 0.4 0.6) '(0.1 0.1 0.3))
+
+  ; walls
+  (for-each
+    (lambda (w)
+      (apply (cut draw-wall <> <> <> '(1 1 0)) (channel-value w)))
+    (channel-value walls))
+
+  ; player
   (draw-hexagon '(0.1 0.1 0.3) '(0 0 1))
   (draw-player)
+
   (cairo-restore *c*)
 
   ; overlay

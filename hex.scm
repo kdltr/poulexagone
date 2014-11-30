@@ -28,7 +28,6 @@
     (for-each (cut channel-enqueue events <>) evlist)
 
     ; drawing callbacks
-    ; (clear-screen)
     (cairo-new-path *c*)
     (draw-all)))
 
