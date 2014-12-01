@@ -115,7 +115,7 @@
   ; walls
   (for-each
     (lambda (w)
-      (apply (cut draw-wall <> <> <> '(1 1 0)) (channel-value w)))
+      (apply (cut draw-wall <> <> <> '(1 1 0)) w))
     (channel-value walls))
 
   ; player

@@ -71,37 +71,57 @@
 
 (define walls-speed 1/4)
 
+; Reuse this with a better frp system
+; (define (make-wall zone width)
+;   (fold-channel
+;     clock
+;     (lambda (dt wall)
+;       (list (car wall)
+;             (max 0 (- (cadr wall) (* dt walls-speed)))
+;             (caddr wall)))
+;     (list zone 600 width)))
+;
+; (define walls-clock
+;   (filter-channel
+;     (fold-channel
+;       clock
+;       (lambda (dt prev)
+;         (if (> (+ dt prev) 500)
+;           0
+;           (+ dt prev)))
+;       0)
+;     zero?))
+
+
 (define (make-wall zone width)
-  (fold-channel
-    clock
-    (lambda (dt wall)
-      (list (car wall)
-            (max 0 (- (cadr wall) (* dt walls-speed)))
-            (caddr wall)))
-    (list zone 600 width)
-    ))
+  (list zone 600 width))
 
-(define (make-walls)
-  (map
-    (lambda (i)
-      (make-wall (random 6) 20))
-    (iota (random 5))))
+(define make-walls
+  (let ((last 0))
+    (lambda (dt)
+      (if (>= (+ last dt) 500)
+        (begin
+          (set! last 0)
+          (map
+            (lambda (i)
+              (make-wall (random 6) 20))
+            (iota (random 5))))
+        (begin
+          (set! last (+ last dt))
+          '())))))
 
-(define walls-clock
-  (filter-channel
-    (fold-channel
-      clock
-      (lambda (dt prev)
-        (if (> (+ dt prev) 500)
-          0
-          (+ dt prev)))
-      0)
-    zero?))
+(define (update-wall dt wall)
+  (list (car wall)
+        (max 0 (- (cadr wall) (* dt walls-speed)))
+        (caddr wall)))
+
+(define (update-walls dt walls)
+  (map (cut update-wall dt <>) walls))
 
 (define walls
   (fold-channel
-    walls-clock
+    clock
     (lambda (dt walls)
-      (append (make-walls)
-              (remove (o zero? cadr channel-value) walls)))
+      (append (make-walls dt)
+              (remove (o zero? cadr) (update-walls dt walls))))
     '()))
