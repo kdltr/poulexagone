@@ -66,7 +66,6 @@
         (inexact->exact
           (ceiling (/ (- pos (/ pi 6)) (/ pi 3))))
         6))))
-(channel-enqueue player-zone 0)
 
 
 (define walls-speed 1/4)
@@ -125,3 +124,17 @@
       (append (make-walls dt)
               (remove (o zero? cadr) (update-walls dt walls))))
     '()))
+
+(define death-collision
+  (combine-channels
+    (lambda (zone walls)
+      (filter (lambda (w)
+                (and (= zone (car w))
+                     (< (cadr w) (+ hexagon-radius 15))
+                     (> (+ (cadr w) (caddr w)) (+ hexagon-radius 15))))
+              walls))
+    player-zone
+    walls))
+
+; Initialization
+(channel-enqueue player-zone 0)
