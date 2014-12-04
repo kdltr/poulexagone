@@ -130,11 +130,26 @@
     (lambda (zone walls)
       (filter (lambda (w)
                 (and (= zone (car w))
-                     (< (cadr w) (+ hexagon-radius 15))
-                     (> (+ (cadr w) (caddr w)) (+ hexagon-radius 15))))
+                     (<= (cadr w) (+ hexagon-radius 15))
+                     (>= (+ (cadr w) (caddr w)) (+ hexagon-radius 15))))
               walls))
     player-zone
     walls))
+
+(define side-collisions
+  (combine-channels
+    (lambda (zone walls)
+      (let ((low-walls (filter (lambda (w)
+                                 (and (or (= (car w) (modulo (- zone 1) 6))
+                                          (= (car w) (modulo (+ zone 1) 6)))
+                                      (<= (cadr w) (+ hexagon-radius 15))
+                                      (>= (+ (cadr w) (caddr w)) (+ hexagon-radius 15))))
+                               walls)))
+        (list (any (lambda (w) (= (car w) (modulo (- zone 1) 6))) low-walls)
+              (any (lambda (w) (= (car w) (modulo (+ zone 1) 6))) low-walls))))
+    player-zone
+    walls))
+
 
 ; Initialization
 (channel-enqueue player-zone 0)

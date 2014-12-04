@@ -102,7 +102,8 @@
   (text 10 70
         (sprintf "Zone ~A" (channel-value player-zone)))
   (when (not (null? (channel-value death-collision)))
-    (text 10 90 "Collision")))
+    (text 10 90 "Collision"))
+  (text 10 110 (sprintf "Sides: ~A" (channel-value side-collisions))))
 
 (define (draw-all)
   (cairo-save *c*)
