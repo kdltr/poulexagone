@@ -5,6 +5,4 @@ To play this game you need the following eggs:
 
 - matchable
 
-- cairo (with a patch that add a few missing functions: just
-  `chicken-install -r cairo`, apply cairo.patch and run chicken-install in the
-  cairo directory.
+- cairo
