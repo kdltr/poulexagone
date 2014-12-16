@@ -7,11 +7,10 @@
 (current-background black)
 
 (define clock (make-channel))
+(define events (make-channel))
 
 (define time
-  (fold-channel clock + 0))
-
-(define events (make-channel))
+  (fold-channel + 0 clock))
 
 (new-doodle)
 

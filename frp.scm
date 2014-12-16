@@ -1,68 +1,71 @@
-; channel-enqueue
-; subscribe
-; unsubscribe)
 
-(import scheme chicken)
+; Public API
+; (make-channel)
+; (channel-enqueue channel value)
+; (fold-channel channel proc seed)
+; (filter-channel channel pred?)
+; (map-channel channel proc)
+; (combine-channels proc . channels)
+; (channel-value channel)
 
-(use srfi-1)
+(define-record %channel
+               on-receive value publishers subscribers)
 
-(define-record channel subscribers value)
+(define (channel-enqueue channel message)
+  ((%channel-on-receive channel) channel message))
 
-(define make-channel
-  (let ((%make-channel make-channel))
-    (lambda ()
-      (%make-channel '() (void)))))
+(define (dispatch-message source-channel message)
+  (%channel-value-set! source-channel message)
+  (for-each
+    (cut channel-enqueue <> message)
+    (%channel-subscribers source-channel)))
 
-(define (channel-enqueue channel value)
-  (for-each (lambda (s) (s value)) (channel-subscribers channel))
-  (channel-value-set! channel value))
+(define (channel-subscribe publisher subscriber)
+  (%channel-subscribers-set! publisher
+    (cons subscriber
+          (%channel-subscribers publisher))))
 
-(define (on-channel-receive channel proc)
-  (channel-subscribers-set! channel (cons proc (channel-subscribers channel))))
+(define (channel-unsubscribe publisher subscriber)
+  (%channel-subscribers-set! publisher
+    (delete subscriber
+            (%channel-subscribers publisher))))
 
-(define (siphon-channel source-channel
-                        #!optional
-                        (destination-channel (make-channel))
-                        (on-receive channel-enqueue))
-  (on-channel-receive source-channel
-    (lambda (msg) (on-receive destination-channel msg)))
-  destination-channel)
+(define channel-value %channel-value)
 
-(define (fold-channel channel proc seed)
-  (let ((result (make-channel)))
-    (channel-enqueue result seed)
-    (on-channel-receive channel
-      (let ((previous seed))
-        (lambda (msg)
-          (let ((value (proc msg previous)))
-            (set! previous value)
-            (channel-enqueue result value)))))
-    result))
+(define (make-channel)
+  (make-%channel dispatch-message 'frp-none '() '()))
 
-(define (map-channel channel proc)
-  (siphon-channel channel
-                  (make-channel)
-                  (lambda (dest msg)
-                    (channel-enqueue dest (proc msg)))))
+(define (siphon-channel publishers on-receive #!optional (init 'frp-none)
+                                                         (subscribers '()))
+  (let ((new  (make-%channel on-receive
+                             init
+                             publishers
+                             subscribers)))
+    (for-each (cut channel-subscribe <> new) publishers)
+    new))
 
-(define (filter-channel channel pred?)
-  (siphon-channel channel
-                  (make-channel)
-                  (lambda (dest msg)
-                    (if (pred? msg) (channel-enqueue dest msg)))))
+(define (map-channel proc channel . rest)
+  (siphon-channel (cons channel rest)
+                  (lambda (c m)
+                    (dispatch-message
+                      c
+                      (apply proc
+                             (map channel-value
+                                  (%channel-publishers c)))))))
 
-(define (combine-channels proc chan1 chan2)
-  (let ((comb (make-channel)))
-    (let ((val1 (void))
-          (val2 (void)))
-      (on-channel-receive chan1
-        (lambda (m)
-          (set! val1 m)
-          (unless (eqv? val2 (void))
-            (channel-enqueue comb (proc val1 val2)))))
-      (on-channel-receive chan2
-        (lambda (m)
-          (set! val2 m)
-          (unless (eqv? val1 (void))
-            (channel-enqueue comb (proc val1 val2))))))
-    comb))
+(define (filter-channel pred? channel)
+  (siphon-channel (list channel)
+                  (lambda (c m)
+                    (when (pred? m)
+                      (dispatch-message c m)))))
+
+(define (fold-channel proc seed channel . rest)
+  (siphon-channel (cons channel rest)
+                  (lambda (c m)
+                    (dispatch-message
+                      c
+                      (apply proc
+                             (append (map channel-value
+                                          (%channel-publishers c))
+                                     (list (%channel-value c))))))
+                  seed))
