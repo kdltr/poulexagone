@@ -12,13 +12,13 @@
   (map (cut * k <>) v))
 
 (define line-to
-  (cut apply cairo-line-to *c* <>))
+  (cut apply nvg:line-to! *c* <>))
 
 (define move-to
-  (cut apply cairo-move-to *c* <>))
+  (cut apply nvg:move-to! *c* <>))
 
 
-; Game
+;; Game
 
 (define normal-coordinates
   (let* ((rp 1) (rn (- rp))
@@ -44,42 +44,46 @@
           (map apply-with (list sixth first))))
 
 (define (draw-zone n color)
-  (cairo-move-to *c* 0 0)
+  (nvg:begin-path! *c*)
+  (nvg:move-to! *c* 0 0)
   (for-each line-to (map (cut vmul d <>) (vector-ref zones-coordinates n)))
-  (cairo-close-path *c*)
-  (apply cairo-set-source-rgb *c* color)
-  (cairo-fill *c*))
+  (nvg:close-path! *c*)
+  (nvg:fill-color! *c* (apply nvg:make-color-rgbf color))
+  (nvg:fill! *c*))
 
 (define (draw-hexagon fill stroke)
-  (apply cairo-move-to *c* (car hexagon-coordinates))
+  (nvg:begin-path! *c*)
+  (apply nvg:move-to! *c* (car hexagon-coordinates))
   (for-each line-to (cdr hexagon-coordinates))
-  (cairo-close-path *c*)
-  (apply cairo-set-source-rgb *c* fill)
-  (cairo-fill-preserve *c*)
-  (apply cairo-set-source-rgb *c* stroke)
-  (cairo-set-line-width *c* 3)
-  (cairo-stroke *c*))
+  (nvg:close-path! *c*)
+  (nvg:fill-color! *c* (apply nvg:make-color-rgbf fill))
+  (nvg:stroke-color! *c* (apply nvg:make-color-rgbf stroke))
+  (nvg:stroke-width! *c* 3)
+  (nvg:fill! *c*)
+  (nvg:stroke! *c*))
 
 
 (define (draw-player)
-  (cairo-set-source-rgb *c* 0.6 0.6 1)
-  (cairo-rotate *c* (channel-value player-position))
-  (cairo-translate *c* 0 (- (+ hexagon-radius 5)))
-  (cairo-move-to *c* -5 0)
-  (cairo-line-to *c* 5 0)
-  (cairo-line-to *c* 0 -10)
-  (cairo-close-path *c*)
-  (cairo-fill *c*))
+  (nvg:begin-path! *c*)
+  (nvg:rotate! *c* (channel-value player-position))
+  (nvg:translate! *c* 0 (- (+ hexagon-radius 5)))
+  (nvg:move-to! *c* -5 0)
+  (nvg:line-to! *c* 5 0)
+  (nvg:line-to! *c* 0 -10)
+  (nvg:close-path! *c*)
+  (nvg:fill-color! *c* (nvg:make-color-rgbf 0.6 0.6 1))
+  (nvg:fill! *c*))
 
 (define (draw-wall zone position width color)
   (let ((units (vector-ref zones-coordinates zone)))
+    (nvg:begin-path! *c*)
     (move-to (vmul position (car units)))
     (line-to (vmul (+ position width) (car units)))
     (line-to (vmul (+ position width) (cadr units)))
     (line-to (vmul position (cadr units)))
-    (cairo-close-path *c*)
-    (apply cairo-set-source-rgb *c* color)
-    (cairo-fill *c*)))
+    (nvg:close-path! *c*)
+    (nvg:fill-color! *c* (apply nvg:make-color-rgbf color))
+    (nvg:fill! *c*)))
 
 (define (draw-background c1 c2)
   (for-each
@@ -88,43 +92,46 @@
     (iota 6)))
 
 
-; Overlay
+;; Overlay
 
 (define (draw-overlay)
-  ; fps
-  (text 10 10 (sprintf "~A fps" (channel-value fps)))
-  ; time elapsed
-  (text 10 30
-        (sprintf "~A" (/ (channel-value time) 1000)))
-  ; player angle
-  (text 10 50
+  (nvg:begin-path! *c*)
+  (nvg:font-size! *c* 12)
+  (nvg:font-face! *c* "DejaVu")
+  (nvg:fill-color! *c* (nvg:make-color-rgbf 1 1 1))
+  ;; fps
+  (nvg:text! *c* 10 10 (sprintf "~A fps" (channel-value fps)))
+  ;; time elapsed
+  (nvg:text! *c* 10 30 (sprintf "~A" (/ (channel-value time) 1000)))
+  ;; player angle
+  (nvg:text! *c* 10 50
         (sprintf "~A°" (channel-value player-position)))
-  (text 10 70
+  (nvg:text! *c* 10 70
         (sprintf "Zone ~A" (angle->zone (channel-value player-position))))
   (when (not (null? (channel-value death-collision)))
-    (text 10 90 "Collision")))
+    (nvg:text! *c* 10 90 "Collision")))
 
 (define (draw-all)
-  (cairo-save *c*)
+  (nvg:save-state! *c*)
 
-  (cairo-translate *c* cx cy)
+  (nvg:translate! *c* cx cy)
   ;; fancy effects
-  (cairo-scale *c* 1 0.8)
-  (cairo-rotate *c* (channel-value hex-angle))
+  (nvg:scale! *c* 1 0.8)
+  (nvg:rotate! *c* (channel-value hex-angle))
 
   (draw-background '(0.4 0.4 0.6) '(0.1 0.1 0.3))
 
-  ; walls
+  ;; walls
   (for-each
     (lambda (w)
       (apply (cut draw-wall <> <> <> '(1 1 0)) w))
     (channel-value walls))
 
-  ; player
+  ;; player
   (draw-hexagon '(0.1 0.1 0.3) '(0 0 1))
   (draw-player)
 
-  (cairo-restore *c*)
+  (nvg:restore-state! *c*)
 
-  ; overlay
+  ;; overlay
   (draw-overlay))
